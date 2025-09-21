@@ -25,3 +25,6 @@ backend/evaluations.db
 # OS junk files
 .DS_Store
 Thumbs.db
+*.env
+__pycache__/
+*.db
