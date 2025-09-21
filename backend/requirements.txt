@@ -1,7 +1,6 @@
-fastapi
-uvicorn
-python-multipart
-pydantic
+streamlit
+pandas
+numpy
 python-dotenv
 openai
 pdfplumber
