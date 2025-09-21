@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard | Bytesquad</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen p-10 font-inter">
+
+  <!-- Header with Logo -->
+  <div class="flex items-center mb-8">
+    <img src="logo1.png" alt="Logo" class="h-12 w-12 mr-3 rounded-full shadow" />
+    <h1 class="text-3xl font-bold text-gray-800">📊 Evaluation Dashboard</h1>
+  </div>
+
+  <!-- Filters -->
+  <div class="bg-white shadow rounded-lg p-6 mb-6 flex flex-wrap gap-4 items-end">
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Verdict</label>
+      <select id="filterVerdict" class="border rounded-lg px-3 py-2">
+        <option value="">All</option>
+        <option value="High">High</option>
+        <option value="Medium">Medium</option>
+        <option value="Low">Low</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Minimum Score</label>
+      <input id="filterMinScore" type="number" class="border rounded-lg px-3 py-2 w-28" placeholder="50" />
+    </div>
+
+    <button onclick="loadEvaluations()" class="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800">
+      Apply Filters
+    </button>
+  </div>
+
+  <!-- Export -->
+  <div class="mb-6 flex gap-3">
+    <button onclick="exportData('csv')" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Export CSV</button>
+    <button onclick="exportData('xlsx')" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">Export Excel</button>
+    <button onclick="exportData('pdf')" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">Export PDF</button>
+  </div>
+
+  <!-- Table -->
+  <div class="bg-white shadow rounded-lg overflow-hidden">
+    <table class="w-full border-collapse">
+      <thead class="bg-gray-100">
+        <tr>
+          <th class="border px-4 py-2 text-left">Job Title</th>
+          <th class="border px-4 py-2 text-left">Candidate</th>
+          <th class="border px-4 py-2 text-center">Final Score</th>
+          <th class="border px-4 py-2 text-center">Verdict</th>
+          <th class="border px-4 py-2 text-left">Missing Skills</th>
+        </tr>
+      </thead>
+      <tbody id="evalTableBody" class="text-sm"></tbody>
+    </table>
+  </div>
+
+  <script>
+    async function loadEvaluations() {
+      const verdict = document.getElementById("filterVerdict").value;
+      const minScore = document.getElementById("filterMinScore").value;
+
+      let url = "/evaluations";
+      if (verdict || minScore) {
+        url = `/evaluations/export?format=json${verdict ? `&verdict=${verdict}` : ""}${minScore ? `&min_score=${minScore}` : ""}`;
+      }
+
+      const res = await fetch(url);
+      const data = await res.json();
+
+      const tbody = document.getElementById("evalTableBody");
+      tbody.innerHTML = "";
+      data.forEach(row => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="border px-4 py-2">${row.job_title}</td>
+          <td class="border px-4 py-2">${row.candidate_name}</td>
+          <td class="border px-4 py-2 text-center">${row.final_score}%</td>
+          <td class="border px-4 py-2 text-center">
+            <span class="px-2 py-1 rounded-lg text-white ${row.verdict === "High" ? "bg-green-600" : row.verdict === "Medium" ? "bg-yellow-500" : "bg-red-600"}">
+              ${row.verdict}
+            </span>
+          </td>
+          <td class="border px-4 py-2">${row.missing.join(", ")}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function exportData(format) {
+      const verdict = document.getElementById("filterVerdict").value;
+      const minScore = document.getElementById("filterMinScore").value;
+
+      let url = `/evaluations/export?format=${format}`;
+      if (verdict) url += `&verdict=${verdict}`;
+      if (minScore) url += `&min_score=${minScore}`;
+
+      window.open(url, "_blank");
+    }
+
+    // Load on page load
+    loadEvaluations();
+  </script>
+</body>
+</html>

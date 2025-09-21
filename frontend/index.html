@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Resume Relevance | Bytesquad</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .brand-font { font-family: 'Playfair Display', serif; }
+  </style>
+</head>
+
+<body class="bg-white min-h-screen flex flex-col items-center">
+
+  <!-- Header -->
+  <header class="w-full flex items-center justify-between p-4 border-b border-gray-200">
+    <!-- ✅ Fix logo path -->
+    <img src="logo1.jpeg" alt="Logo" class="h-12 w-auto object-contain" />
+    <nav>
+      <button id="goToForm" class="px-4 py-2 text-sm rounded-lg bg-black text-white mr-2">Evaluation</button>
+      <button id="goToDashboard" class="px-4 py-2 text-sm rounded-lg bg-gray-200 hover:bg-gray-300">Dashboard</button>
+    </nav>
+  </header>
+
+  <!-- Hero -->
+  <section class="w-full max-w-5xl px-6 py-12 text-center">
+    <h1 class="brand-font text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+      Resume Relevance by Bytesquad
+    </h1>
+    <p class="text-lg text-gray-600 max-w-2xl mx-auto">
+      Helping companies and candidates align effortlessly.  
+      Our AI-powered engine evaluates resumes against job descriptions with precision, 
+      ensuring the right match every time. Make hiring smarter and faster with us.
+    </p>
+  </section>
+
+  <!-- Evaluation Form Section -->
+  <div id="evalSection" class="bg-white/80 backdrop-blur-lg shadow-2xl rounded-3xl p-10 w-full max-w-4xl border border-gray-100">
+
+    <h2 class="text-2xl font-semibold text-center text-gray-800 mb-8">
+      Automated Resume Relevance Check
+    </h2>
+
+    <form id="evalForm" class="space-y-6">
+      <div>
+        <label class="block font-medium text-gray-700 mb-1">Job Description (JD):</label>
+        <textarea name="jd_text" rows="4"
+          class="w-full border rounded-xl p-3 focus:ring-2 focus:ring-black/70 focus:border-black"
+          placeholder="Paste JD here OR upload a file below"></textarea>
+        <input type="file" name="jd_file" accept=".txt,.pdf,.doc,.docx"
+          class="mt-2 block w-full text-sm text-gray-600" />
+      </div>
+
+      <div>
+        <label class="block font-medium text-gray-700 mb-1">Resume:</label>
+        <textarea name="resume_text" rows="4"
+          class="w-full border rounded-xl p-3 focus:ring-2 focus:ring-black/70 focus:border-black"
+          placeholder="Paste Resume here OR upload a file below"></textarea>
+        <input type="file" name="resume_file" accept=".txt,.pdf,.doc,.docx"
+          class="mt-2 block w-full text-sm text-gray-600" />
+      </div>
+
+      <div>
+        <label class="block font-medium text-gray-700 mb-1">Candidate Name:</label>
+        <input type="text" name="candidate_name"
+          class="w-full border rounded-xl p-3 focus:ring-2 focus:ring-black/70 focus:border-black"
+          placeholder="John Doe" />
+      </div>
+
+      <div class="flex justify-center">
+        <button type="submit"
+          class="bg-black text-white px-6 py-3 rounded-xl hover:bg-gray-900 transition font-medium">
+          Evaluate Resume
+        </button>
+      </div>
+    </form>
+
+    <!-- Preprocessing -->
+    <div id="preprocess" class="mt-6 hidden text-center text-gray-600">
+      ⏳ Preprocessing uploaded files... cleaning text before evaluation.
+    </div>
+
+    <!-- Results -->
+    <div id="result" class="mt-10 hidden animate-fadeIn">
+      <h3 class="text-2xl font-semibold text-gray-900 mb-6 text-center">📊 Evaluation Result</h3>
+      <div id="resultContent" class="space-y-3 text-gray-700"></div>
+      <div class="mt-8">
+        <h4 class="text-lg font-medium mb-3 text-gray-800">🎯 Score Breakdown</h4>
+        <canvas id="scoreChart" width="400" height="400"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard Section -->
+  <div id="dashboardSection" class="hidden bg-white/80 backdrop-blur-lg shadow-2xl rounded-3xl p-10 w-full max-w-5xl border border-gray-100">
+    <h2 class="text-2xl font-semibold text-center text-gray-800 mb-8">📂 Past Evaluations</h2>
+    <table class="w-full border border-gray-200 rounded-lg overflow-hidden">
+      <thead class="bg-gray-100 text-gray-700">
+        <tr>
+          <th class="p-3 text-left">Job Title</th>
+          <th class="p-3 text-left">Candidate</th>
+          <th class="p-3 text-left">Final Score</th>
+          <th class="p-3 text-left">Verdict</th>
+          <th class="p-3 text-left">Missing</th>
+          <th class="p-3 text-left">Suggestions</th>
+        </tr>
+      </thead>
+      <tbody id="dashboardTable" class="text-gray-600"></tbody>
+    </table>
+  </div>
+
+  <script>
+  let chartInstance = null;
+
+  // Toggle views
+  document.getElementById("goToForm").addEventListener("click", () => {
+    document.getElementById("evalSection").classList.remove("hidden");
+    document.getElementById("dashboardSection").classList.add("hidden");
+  });
+
+  document.getElementById("goToDashboard").addEventListener("click", async () => {
+    document.getElementById("evalSection").classList.add("hidden");
+    document.getElementById("dashboardSection").classList.remove("hidden");
+
+    try {
+      const res = await fetch("/evaluations");
+      if (!res.ok) throw new Error("Server error");
+      const data = await res.json();
+
+      const table = document.getElementById("dashboardTable");
+      table.innerHTML = "";
+      data.forEach(ev => {
+        const row = `
+          <tr class="border-t">
+            <td class="p-3">${ev.job_title || "N/A"}</td>
+            <td class="p-3">${ev.candidate_name || "N/A"}</td>
+            <td class="p-3">${ev.final_score}%</td>
+            <td class="p-3"><span class="px-2 py-1 rounded text-white ${
+              ev.verdict === "High" ? "bg-green-600" :
+              ev.verdict === "Medium" ? "bg-yellow-500" : "bg-red-500"
+            }">${ev.verdict}</span></td>
+            <td class="p-3">${(ev.missing || []).join(", ")}</td>
+            <td class="p-3 text-sm">${(ev.suggestions || []).join("<br>")}</td>
+          </tr>
+        `;
+        table.insertAdjacentHTML("beforeend", row);
+      });
+    } catch (err) {
+      alert("❌ Error loading dashboard: " + err.message);
+    }
+  });
+
+  // Handle evaluation form
+  document.getElementById("evalForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+
+    const preprocessDiv = document.getElementById("preprocess");
+    preprocessDiv.classList.remove("hidden");
+
+    try {
+      const res = await fetch("/evaluate", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Server error");
+      const data = await res.json();
+      preprocessDiv.classList.add("hidden");
+
+      const resultDiv = document.getElementById("result");
+      const resultContent = document.getElementById("resultContent");
+      resultDiv.classList.remove("hidden");
+
+      resultContent.innerHTML = `
+        <p><strong>Job Title:</strong> ${data.job_title || "N/A"}</p>
+        <p><strong>Hard Score:</strong> ${data.hard_score}%</p>
+        <p><strong>Semantic Score:</strong> ${data.semantic_score}%</p>
+        <p><strong>Final Score:</strong> ${data.final_score}%</p>
+        <p><strong>Verdict:</strong> <span id="verdictTag"></span></p>
+        <p><strong>Missing Skills:</strong> ${(data.missing || []).join(", ") || "None"}</p>
+        <h3 class="mt-4 font-semibold">Suggestions:</h3>
+        <ul id="suggestionList" class="list-disc ml-6"></ul>
+      `;
+
+      const verdictTag = document.getElementById("verdictTag");
+      verdictTag.textContent = data.verdict;
+      verdictTag.className =
+        "px-3 py-1 rounded-lg text-white text-sm " +
+        (data.verdict === "High" ? "bg-green-600" :
+         data.verdict === "Medium" ? "bg-yellow-500" : "bg-red-500");
+
+      const suggestionList = document.getElementById("suggestionList");
+      suggestionList.innerHTML = "";
+      (data.suggestions || []).forEach(s => {
+        const li = document.createElement("li");
+        li.textContent = s;
+        suggestionList.appendChild(li);
+      });
+
+      const ctx = document.getElementById("scoreChart").getContext("2d");
+      if (chartInstance) chartInstance.destroy();
+      chartInstance = new Chart(ctx, {
+        type: "pie",
+        data: {
+          labels: ["Hard Score", "Semantic Score", "Gap"],
+          datasets: [{
+            data: [
+              data.hard_score,
+              data.semantic_score,
+              100 - Math.min(100, (data.hard_score + data.semantic_score) / 2)
+            ],
+            backgroundColor: ["#111827", "#D97706", "#E5E7EB"],
+            borderWidth: 1
+          }]
+        },
+        options: { responsive: true, plugins: { legend: { position: "bottom" } } }
+      });
+    } catch (err) {
+      preprocessDiv.classList.add("hidden");
+      alert("❌ Error: " + err.message);
+    }
+  });
+  </script>
+</body>
+</html>

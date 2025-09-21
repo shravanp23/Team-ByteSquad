@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+*.log
+
+# Virtual environment
+venv/
+.env
+.env.*
+
+# Backend env & db
+backend/.env
+backend/.env.*
+backend/.env.example
+backend/evaluations.db
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# OS junk files
+.DS_Store
+Thumbs.db

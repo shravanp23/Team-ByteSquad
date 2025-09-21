@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Resume Relevance Check</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center">
+  <div class="bg-white shadow-xl rounded-2xl p-8 w-full max-w-4xl relative">
+
+    <!-- Logo -->
+    <div class="absolute top-4 left-4 flex items-center space-x-2">
+     <img src="logo1.jpeg" alt="Logo" class="h-10 w-10 rounded-full shadow" />
+
+      <span class="font-bold text-indigo-600 text-lg">Resume Relevance</span>
+    </div>
+
+    <!-- Title -->
+    <h1 class="text-3xl font-bold text-center text-indigo-600 mb-10">
+      🚀 Automated Resume Relevance Check
+    </h1>
+
+    <!-- Upload Form -->
+    <form id="evalForm" class="space-y-4">
+      <div>
+        <label class="block font-semibold">Job Description (JD):</label>
+        <textarea name="jd_text" rows="4"
+          class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500"
+          placeholder="Paste JD here OR upload a file below"></textarea>
+        <input type="file" name="jd_file" accept=".txt,.pdf,.doc,.docx" class="mt-2 block w-full" />
+      </div>
+
+      <div>
+        <label class="block font-semibold">Resume:</label>
+        <textarea name="resume_text" rows="4"
+          class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500"
+          placeholder="Paste Resume here OR upload a file below"></textarea>
+        <input type="file" name="resume_file" accept=".txt,.pdf,.doc,.docx" class="mt-2 block w-full" />
+      </div>
+
+      <div>
+        <label class="block font-semibold">Candidate Name:</label>
+        <input type="text" name="candidate_name"
+          class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500"
+          placeholder="John Doe" />
+      </div>
+
+      <button type="submit"
+        class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+        🔍 Evaluate Resume
+      </button>
+    </form>
+
+    <!-- Results -->
+    <div id="result" class="mt-8 hidden">
+      <h2 class="text-2xl font-bold text-gray-800 mb-4">📊 Evaluation Result</h2>
+      <div id="resultContent" class="space-y-3"></div>
+
+      <!-- Pie Chart -->
+      <div class="mt-8">
+        <h3 class="text-xl font-semibold mb-2">🎯 Score Breakdown</h3>
+        <canvas id="scoreChart" width="400" height="400"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  let chartInstance = null;
+
+  document.getElementById("evalForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = document.getElementById("evalForm");
+    const formData = new FormData(form);
+
+    try {
+      const res = await fetch("http://127.0.0.1:8000/evaluate", {
+        method: "POST",
+        body: formData
+      });
+
+      if (!res.ok) throw new Error("Server error");
+      const data = await res.json();
+
+      const resultDiv = document.getElementById("result");
+      const resultContent = document.getElementById("resultContent");
+      resultDiv.classList.remove("hidden");
+
+      resultContent.innerHTML = `
+        <p><strong>Job Title:</strong> ${data.job_title || "N/A"}</p>
+        <p><strong>Hard Score:</strong> ${data.hard_score}%</p>
+        <p><strong>Semantic Score:</strong> ${data.semantic_score}%</p>
+        <p><strong>Final Score:</strong> ${data.final_score}%</p>
+        <p><strong>Verdict:</strong> <span id="verdictTag"></span></p>
+        <p><strong>Missing Skills:</strong> ${(data.missing || []).join(", ") || "None"}</p>
+        <h3 class="mt-4 font-semibold">Suggestions:</h3>
+        <ul id="suggestionList" class="list-disc ml-6"></ul>
+      `;
+
+      const verdictTag = document.getElementById("verdictTag");
+      verdictTag.textContent = data.verdict;
+      verdictTag.className =
+        "px-2 py-1 rounded-lg text-white " +
+        (data.verdict === "High" ? "bg-green-500" :
+         data.verdict === "Medium" ? "bg-yellow-500" : "bg-red-500");
+
+      const suggestionList = document.getElementById("suggestionList");
+      (data.suggestions || []).forEach(s => {
+        const li = document.createElement("li");
+        li.textContent = s;
+        suggestionList.appendChild(li);
+      });
+
+      const ctx = document.getElementById("scoreChart").getContext("2d");
+      if (chartInstance) chartInstance.destroy();
+      chartInstance = new Chart(ctx, {
+        type: "pie",
+        data: {
+          labels: ["Hard Score", "Semantic Score", "Gap"],
+          datasets: [{
+            data: [
+              data.hard_score,
+              data.semantic_score,
+              100 - Math.min(100, (data.hard_score + data.semantic_score) / 2)
+            ],
+            backgroundColor: ["#4F46E5", "#22C55E", "#E5E7EB"],
+            borderWidth: 1
+          }]
+        },
+        options: { responsive: true, plugins: { legend: { position: "bottom" } } }
+      });
+    } catch (err) {
+      alert("❌ Error: " + err.message);
+    }
+  });
+  </script>
+</body>
+</html>
