@@ -22,9 +22,10 @@ load_dotenv()
 
 try:
     import openai
-except Exception:
+except ImportError:
     openai = None
 
+# Environment variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 EMBED_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
 LLM_MODEL = os.getenv("OPENAI_LLM_MODEL", "gpt-4o-mini")
